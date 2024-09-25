@@ -5,16 +5,88 @@ import java.security.NoSuchAlgorithmException;
 import java.util.zip.GZIPOutputStream;
 
 public class Blob {
-
-    private static final boolean COMPRESSION_ENABLED = false; // Toggle for compression
+    private static boolean COMPRESSION_ENABLED = true;
+    private static final String TEST_REPO_PATH = "/Users/User/Desktop/HTCS_Projects/GIT-TEST-REPO";
+    private static final String TEST_FILE_PATH = TEST_REPO_PATH + "/test_file.txt";
 
     public static void main(String[] args) {
-        String repoPath = "/Users/User/Desktop/HTCS_Projects/GIT-PROJECT-TYLER";
-        String filePath = "/Users/User/Desktop/HTCS_Projects/GIT-PROJECT-TYLER/tester.txt"; // Test file
-
         try {
+            // Stretch Goal #1: Test initialization
+            System.out.println("Testing initialization...");
+            Git git = new Git();
+            git.initRepo(TEST_REPO_PATH);
+            
+            File gitDir = new File(TEST_REPO_PATH, "git");
+            File objectsDir = new File(gitDir, "objects");
+            File indexFile = new File(gitDir, "index");
+            
+            if (gitDir.exists() && objectsDir.exists() && indexFile.exists()) {
+                System.out.println("Initialization test passed.");
+            } else {
+                System.out.println("Initialization test failed.");
+            }
+
+            // Stretch Goal #2: Test blob creation and verification
+            System.out.println("Testing blob creation...");
+            
+            // Create a test file
+            Files.write(Paths.get(TEST_FILE_PATH), "Test content".getBytes());
+            
             Blob blob = new Blob();
-            blob.createBlob(filePath, repoPath);
+            blob.createBlob(TEST_FILE_PATH, TEST_REPO_PATH);
+            
+            String hash = generateUniqueFileName(TEST_FILE_PATH);
+            File blobFile = new File(TEST_REPO_PATH, "git/objects/" + hash);
+            
+            if (blobFile.exists()) {
+                System.out.println("Blob creation test passed.");
+            } else {
+                System.out.println("Blob creation test failed.");
+            }
+            
+            // Verify index
+            indexFile = new File(TEST_REPO_PATH, "git/index");
+            String indexContent = new String(Files.readAllBytes(indexFile.toPath()));
+            if (indexContent.contains(hash + " test_file.txt")) {
+                System.out.println("Index update test passed.");
+            } else {
+                System.out.println("Index update test failed.");
+            }
+
+            // Stretch Goal #3: Test compression
+            System.out.println("Testing compression...");
+            
+            // Test with compression enabled
+            COMPRESSION_ENABLED = true;
+            String repetitiveContent = "This is a test.".repeat(1000);
+            Files.write(Paths.get(TEST_FILE_PATH), repetitiveContent.getBytes());
+            blob.createBlob(TEST_FILE_PATH, TEST_REPO_PATH);
+            hash = generateUniqueFileName(TEST_FILE_PATH);
+            blobFile = new File(TEST_REPO_PATH, "git/objects/" + hash);
+            long originalSize = Files.size(Paths.get(TEST_FILE_PATH));
+            long compressedSize = Files.size(blobFile.toPath());
+            System.out.println("Compression enabled - Original size: " + originalSize + ", Compressed size: " + compressedSize);
+            
+            // Test with compression disabled
+            COMPRESSION_ENABLED = false;
+            blob.createBlob(TEST_FILE_PATH, TEST_REPO_PATH);
+            hash = generateUniqueFileName(TEST_FILE_PATH);
+            blobFile = new File(TEST_REPO_PATH, "git/objects/" + hash);
+            long uncompressedSize = Files.size(blobFile.toPath());
+            System.out.println("Compression disabled - Original size: " + originalSize + ", Uncompressed size: " + uncompressedSize);
+            
+            if (compressedSize < uncompressedSize) {
+                System.out.println("Compression test passed. Compressed size is smaller than uncompressed size.");
+            } else {
+                System.out.println("Compression test failed. Compressed size is not smaller than uncompressed size.");
+            }
+            
+            // Clean up
+            System.out.println("Cleaning up test files...");
+            deleteDirectory(gitDir);
+            new File(TEST_FILE_PATH).delete();
+            System.out.println("Test files cleaned up.");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -34,7 +106,7 @@ public class Blob {
         return hashString.toString();
     }
 
-    // Create a new blob and store its content in the "objects" directory
+    // Create a new blob and stores its content in the "objects" directory
     public void createBlob(String filePath, String repoPath) throws IOException, NoSuchAlgorithmException {
         String uniqueFileName = generateUniqueFileName(filePath);
 
@@ -46,7 +118,7 @@ public class Blob {
             }
         }
 
-        // Create the blob file
+        // Creates the blob
         File blobFile = new File(objectsDir, uniqueFileName);
         if (!blobFile.exists()) {
             byte[] fileContent = Files.readAllBytes(Paths.get(filePath));
@@ -57,7 +129,6 @@ public class Blob {
             System.out.println("Blob already exists: " + uniqueFileName);
         }
 
-        // Insert the blob into the index file
         insertIntoIndex(uniqueFileName, filePath, repoPath);
     }
 
@@ -72,7 +143,7 @@ public class Blob {
         }
     }
 
-    // Helper method to compress data using GZIP if compression is enabled
+    // Compresses data if COMPRESSION_ENABLED is true
     private static byte[] maybeCompress(byte[] data) throws IOException {
         if (COMPRESSION_ENABLED) {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -84,7 +155,7 @@ public class Blob {
         return data;
     }
 
-    // Reset functionality to clear out test files and reset the repo
+    // Clear out the test file and reset the repo
     public void resetTestFiles(String repoPath) {
         File gitDir = new File(repoPath, "git");
 
@@ -96,8 +167,8 @@ public class Blob {
         }
     }
 
-    // Recursively delete directories
-    private void deleteDirectory(File dir) {
+    // Deletes directories recursively
+    private static void deleteDirectory(File dir) {
         if (dir.isDirectory()) {
             File[] children = dir.listFiles();
             if (children != null) {
