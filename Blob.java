@@ -6,8 +6,9 @@ import java.util.zip.GZIPOutputStream;
 
 public class Blob {
     private static boolean COMPRESSION_ENABLED = true;
-    private static final String TEST_REPO_PATH = "/Users/User/Desktop/HTCS_Projects/GIT-TEST-REPO";
+    private static final String TEST_REPO_PATH = "C:/Users/gioba/OneDrive/Desktop/HTCS/git-project-Tyler";
     private static final String TEST_FILE_PATH = TEST_REPO_PATH + "/test_file.txt";
+    private static final String TREE_FILE_PATH = TEST_REPO_PATH + "/testTree";
 
     public static void main(String[] args) {
         try {
@@ -80,6 +81,10 @@ public class Blob {
             } else {
                 System.out.println("Compression test failed. Compressed size is not smaller than uncompressed size.");
             }
+
+            // Test as tree
+            blob.createTree(TREE_FILE_PATH, TEST_REPO_PATH);
+            // blob.createBlob(TREE_FILE_PATH, TEST_REPO_PATH);
             
             // Clean up
             System.out.println("Cleaning up test files...");
@@ -123,21 +128,56 @@ public class Blob {
         if (!blobFile.exists()) {
             byte[] fileContent = Files.readAllBytes(Paths.get(filePath));
             fileContent = maybeCompress(fileContent); // Compress if needed
+            if(blobFile.isDirectory()) {
+                insertIntoIndex(true, createTree(filePath, repoPath), filePath, repoPath);
+                return;
+            }
             Files.write(blobFile.toPath(), fileContent);
             System.out.println("Blob created: " + uniqueFileName);
         } else {
             System.out.println("Blob already exists: " + uniqueFileName);
         }
 
-        insertIntoIndex(uniqueFileName, filePath, repoPath);
+        insertIntoIndex(false, uniqueFileName, filePath, repoPath);
+    }
+
+    //returns SHA-1 hash of tree
+    public String createTree(String filePath, String repoPath) throws IOException, NoSuchAlgorithmException {
+        //make a file object of the tree dir in /objects
+        //get children
+        //Write SHA-1 hashes to file
+        //hash the file object
+
+        String uniqueFileName = generateUniqueFileName(filePath);
+        File objectsDir = new File(repoPath, "git/objects");
+        File treeFile = new File(objectsDir, uniqueFileName);
+        treeFile.createNewFile();
+        File[] children = treeFile.listFiles();
+        FileWriter treeWriter = new FileWriter(treeFile);
+        for(File child: children) {
+            if(child.isDirectory())
+            {
+                treeWriter.write("tree" + generateUniqueFileName(child.getPath()) + child.getName());
+                treeWriter.close();
+            } else {
+                treeWriter.write("blob" + generateUniqueFileName(filePath) + child.getName());
+                treeWriter.close();
+            }
+        }
+        return generateUniqueFileName(treeFile.getAbsolutePath());
     }
 
     // Insert the blob's hash and original filename into the index file
-    private void insertIntoIndex(String hash, String originalFilePath, String repoPath) throws IOException {
+    private void insertIntoIndex(boolean isTree, String hash, String originalFilePath, String repoPath) throws IOException {
         File indexFile = new File(repoPath, "git/index");
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(indexFile, true))) {
             String fileName = Paths.get(originalFilePath).getFileName().toString();
-            writer.write(hash + " " + fileName);
+            //create index file with respective file type
+            if(isTree) {
+                writer.write ("tree" + hash + " " + fileName);
+            } else {
+                writer.write("blob " + hash + " " + fileName);
+            }
             writer.newLine();
             System.out.println("Added to index: " + hash + " " + fileName);
         }
