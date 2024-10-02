@@ -6,8 +6,9 @@ import java.util.zip.GZIPOutputStream;
 
 public class Blob {
     private static boolean COMPRESSION_ENABLED = true;
-    private static final String repoPath = "/Users/User/Desktop/HTCS_Projects/GIT-PROJECT-TYLER";
-    private static final String testPath = repoPath + "/test_file.txt";
+    private static final String TEST_FILE_PATH = TEST_REPO_PATH + "/test_file.txt";
+    private static final String TREE_FILE_PATH = TEST_REPO_PATH + "/testTree";
+    private static final String TEST_REPO_PATH = "C:/Users/gioba/Desktop/HTCS/git-project-Tyler";
 
     public static void main(String[] args) {
         try {
@@ -70,6 +71,9 @@ public class Blob {
             } else {
                 System.out.println("Compression test failed. Compressed size is not smaller than uncompressed size.");
             }
+
+            // Test as tree
+            blob.createBlob(TREE_FILE_PATH, TEST_REPO_PATH);
             
             // Clean up
             System.out.println("Cleaning up test files...");
@@ -96,7 +100,16 @@ public class Blob {
 
     // Create a new blob
     public void createBlob(String filePath, String repoPath) throws IOException, NoSuchAlgorithmException {
-        String uniqueFileName = generateUniqueFileName(filePath);
+        boolean isTree;
+        String uniqueFileName = "";
+        if(new File(filePath).isDirectory()) {
+            uniqueFileName = createTree(filePath, repoPath);
+            isTree = true;
+        } else {
+            uniqueFileName = generateUniqueFileName(filePath);
+            isTree = false;  
+        }
+
         // Create the objects directory if it doesn't exist
         File objectsDir = new File(repoPath, "git/objects");
         if (!objectsDir.exists()) {
@@ -113,14 +126,61 @@ public class Blob {
         } else {
             System.out.println("Blob already exists: " + uniqueFileName);
         }
-        insertIntoIndex(uniqueFileName, filePath, repoPath);
+
+
+        insertIntoIndex(isTree, uniqueFileName, filePath, repoPath);
     }
 
-    private void insertIntoIndex(String hash, String originalFilePath, String repoPath) throws IOException {
+    //returns SHA-1 hash of tree
+    public String createTree(String filePath, String repoPath) throws IOException, NoSuchAlgorithmException {
+
+        //save children of given filePath as File[]
+        File readFile = new File(filePath);
+        readFile.setReadable(true);
+        File[] children = readFile.listFiles();
+
+        //create new tree object in git/objects
+        File treeFile = new File(repoPath + "/git/objects/tempName");
+        if(!treeFile.exists()) {
+            treeFile.createNewFile();
+        }
+        treeFile.setWritable(true);
+
+        //write contents in filePath to new tree object
+        FileWriter treeWriter = new FileWriter(treeFile);
+        for(File child: children) {
+            if(child.isDirectory())
+            {
+                treeWriter.append("tree " + generateUniqueFileName(child.getPath()) + " " + child.getName() + "\n");
+            } else {
+                treeWriter.append("blob " + generateUniqueFileName(child.getPath()) + " " + child.getName() + "\n");
+            }
+        }
+        treeWriter.close();
+
+        //rename treeFile to hash of contents
+        File renamedTree = new File(repoPath + "/git/objects/" + (generateUniqueFileName(treeFile.getAbsolutePath())));
+        treeFile.renameTo(renamedTree);
+        treeFile.delete();
+
+        byte[] fileContent = Files.readAllBytes(Paths.get(renamedTree.getAbsolutePath()));
+        fileContent = maybeCompress(fileContent); // Compress if needed
+        Files.write(Paths.get(renamedTree.getAbsolutePath()), fileContent);
+        System.out.println("Created tree: " + generateUniqueFileName(repoPath + "/git/objects/" + renamedTree.getName()));
+        return generateUniqueFileName(renamedTree.getAbsolutePath());
+    }
+
+    // Insert the blob's hash and original filename into the index file
+    private void insertIntoIndex(boolean isTree, String hash, String originalFilePath, String repoPath) throws IOException {
         File indexFile = new File(repoPath, "git/index");
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(indexFile, true))) {
             String fileName = Paths.get(originalFilePath).getFileName().toString();
-            writer.write(hash + " " + fileName);
+            //create index file with respective file type
+            if(isTree) {
+                writer.write ("tree " + hash + " " + fileName);
+            } else {
+                writer.write("blob " + hash + " " + fileName);
+            }
             writer.newLine();
             System.out.println("Added to index: " + hash + " " + fileName);
         }
