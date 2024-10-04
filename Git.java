@@ -8,30 +8,36 @@ public class Git {
     }
 
     public void initRepo(String path) {
-        File git = new File (path, "git");
+        File git = new File(path, "git");
         git.mkdirs();
+        
+        // Check if repository already exists
         if (git.exists()) {
             File objectsDir = new File(git, "objects");
             File indexFile = new File(git, "index");
-            if (objectsDir.exists() && indexFile.exists()) {
+            File headFile = new File(git, "HEAD");
+            if (objectsDir.exists() && indexFile.exists() && headFile.exists()) {
                 System.out.println("Git Repository already exists");
                 return;
             }
         }
-
+    
         git.mkdirs();
         File objectsDir = new File(git, "objects");
         objectsDir.mkdirs(); 
-
+    
         File indexFile = new File(git, "index");
+        File headFile = new File(git, "HEAD");  // Create HEAD file
+        
         try {
             indexFile.createNewFile();
+            headFile.createNewFile();  // Initialize empty HEAD file
+            System.out.println("Initialized empty Git repository in " + git.getAbsolutePath());
         } catch (IOException e) {
-            System.err.println("Error creating index file: " + e.getMessage());
+            System.err.println("Error creating index or HEAD file: " + e.getMessage());
         }
-
-        System.out.println("Initialized empty Git repository in " + git.getAbsolutePath());
     }
+    
 }
 
 
