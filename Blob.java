@@ -135,4 +135,22 @@ public class Blob {
         }
         dir.delete();
     }
+
+    public void updateHead(String commitHash, String repoPath) throws IOException {
+        File headFile = new File(repoPath, "git/HEAD");
+        if (!headFile.exists()) {
+            throw new IOException("HEAD file does not exist. Repository may not be initialized properly.");
+        }
+        
+        Files.write(headFile.toPath(), commitHash.getBytes());
+        System.out.println("HEAD updated to commit: " + commitHash);
+    }
+
+    public String getCurrentCommitHash(String repoPath) throws IOException {
+        File headFile = new File(repoPath, "git/HEAD");
+        if (!headFile.exists() || headFile.length() == 0) {
+            return null;
+        }
+        return new String(Files.readAllBytes(headFile.toPath())).trim();
+    }
 }
