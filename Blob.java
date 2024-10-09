@@ -10,19 +10,28 @@ public class Blob {
     private static boolean COMPRESSION_ENABLED = true;
 
     static class IndexEntry {
-        String type;  // "blob" or "tree"
+        String type;  // either a "blob" or "tree"
         String hash;
         String path;
+        boolean deleted;
 
         public IndexEntry(String type, String hash, String path) {
             this.type = type;
             this.hash = hash;
             this.path = path;
+            this.deleted = false;
+        }
+
+        public IndexEntry(String type, String hash, String path, boolean deleted) {
+            this.type = type;
+            this.hash = hash;
+            this.path = path;
+            this.deleted = deleted;
         }
 
         @Override
         public String toString() {
-            return String.format("%s %s %s", type, hash, path);
+            return String.format("%s %s %s%s", type, hash, path, deleted ? " deleted" : "");
         }
     }
 
@@ -53,9 +62,10 @@ public class Blob {
         try (BufferedReader reader = new BufferedReader(new FileReader(indexFile))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(" ", 3);
-                if (parts.length == 3) {
-                    entries.add(new IndexEntry(parts[0], parts[1], parts[2]));
+                String[] parts = line.split(" ", 4); // Changed to handle deletion status
+                if (parts.length >= 3) {
+                    boolean deleted = parts.length == 4 && parts[3].equals("deleted");
+                    entries.add(new IndexEntry(parts[0], parts[1], parts[2], deleted));
                 }
             }
         }
@@ -63,7 +73,6 @@ public class Blob {
     }
 
     private void writeIndex(List<IndexEntry> entries, String repoPath) throws IOException {
-        // Sort entries by path to maintain consistent order
         entries.sort(Comparator.comparing(e -> e.path));
         
         File indexFile = new File(repoPath, "git/index");
@@ -132,11 +141,83 @@ public class Blob {
     }
 
     public String createRootTree(String workingDir, String repoPath) throws IOException, NoSuchAlgorithmException {
+        checkForDeletedFiles(workingDir, repoPath);
+        
         File rootDir = new File(workingDir);
         if (!rootDir.exists() || !rootDir.isDirectory()) {
             throw new IOException("Invalid working directory: " + workingDir);
         }
         return createTree(rootDir, repoPath, workingDir);
+    }
+
+    private void checkForDeletedFiles(String workingDir, String repoPath) throws IOException {
+        List<IndexEntry> entries = readIndex(repoPath);
+        Set<String> existingFiles = new HashSet<>();
+        collectExistingFiles(new File(workingDir), workingDir, existingFiles);
+        boolean hasChanges = false;
+        for (IndexEntry entry : entries) {
+            if (!entry.deleted && !existingFiles.contains(entry.path)) {
+                entry.deleted = true;
+                hasChanges = true;
+                System.out.println("Marked as deleted: " + entry.path);
+            }
+        }
+        
+        if (hasChanges) {
+            writeIndex(entries, repoPath);
+        }
+    }
+
+    private void collectExistingFiles(File directory, String workingDir, Set<String> existingFiles) {
+        if (directory.getName().equals("git")) return;
+        
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.getName().equals("git")) continue;
+                
+                String relativePath = getRelativePath(file, workingDir);
+                if (file.isFile()) {
+                    existingFiles.add(relativePath);
+                } else if (file.isDirectory()) {
+                    existingFiles.add(relativePath);
+                    collectExistingFiles(file, workingDir, existingFiles);
+                }
+            }
+        }
+    }
+
+    public void removeFromIndex(String filePath, String repoPath) throws IOException {
+        List<IndexEntry> entries = readIndex(repoPath);
+        String relativePath = getRelativePath(new File(filePath), new File(repoPath).getParent());
+        
+        boolean found = false;
+        for (IndexEntry entry : entries) {
+            if (entry.path.equals(relativePath)) {
+                entry.deleted = true;
+                found = true;
+                System.out.println("Marked as deleted in index: " + relativePath);
+                break;
+            }
+        }
+        
+        if (found) {
+            writeIndex(entries, repoPath);
+        } else {
+            System.out.println("File not found in index: " + relativePath);
+        }
+    }
+
+    public void cleanIndex(String repoPath) throws IOException {
+        List<IndexEntry> entries = readIndex(repoPath);
+        List<IndexEntry> cleanedEntries = entries.stream()
+            .filter(entry -> !entry.deleted)
+            .collect(Collectors.toList());
+        
+        if (cleanedEntries.size() < entries.size()) {
+            writeIndex(cleanedEntries, repoPath);
+            System.out.println("Cleaned " + (entries.size() - cleanedEntries.size()) + " deleted entries from index");
+        }
     }
 
     public String createTree(File directory, String repoPath, String workingDir) throws IOException, NoSuchAlgorithmException {
