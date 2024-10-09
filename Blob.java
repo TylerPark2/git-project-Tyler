@@ -102,8 +102,6 @@ public class Blob {
         File file = new File(filePath);
         String relativePath = getRelativePath(file, new File(repoPath).getParent());
         String uniqueFileName = generateUniqueFileName(filePath);
-        
-        // Create the objects directory if it doesn't exist
         File objectsDir = new File(repoPath, "git/objects");
         if (!objectsDir.exists()) {
             if (!objectsDir.mkdirs()) {
@@ -111,7 +109,6 @@ public class Blob {
             }
         }
         
-        // Create blob file if it doesn't exist
         File blobFile = new File(objectsDir, uniqueFileName);
         if (!blobFile.exists()) {
             byte[] fileContent = Files.readAllBytes(Paths.get(filePath));
@@ -128,15 +125,12 @@ public class Blob {
     private void updateIndex(String type, String hash, String path, String repoPath) throws IOException {
         List<IndexEntry> entries = readIndex(repoPath);
         
-        // Remove existing entry with the same path
         entries = entries.stream()
             .filter(e -> !e.path.equals(path))
             .collect(Collectors.toList());
         
-        // Add new entry
         entries.add(new IndexEntry(type, hash, path));
         
-        // Write updated index
         writeIndex(entries, repoPath);
     }
 
