@@ -5,7 +5,7 @@ import java.security.NoSuchAlgorithmException;
 public class BlobTest {
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         // Define the path to your project where the test files will be created
-        String repoPath = "/Users/User/Desktop/HTCS_Projects/";
+        String repoPath = "/Users/User/Desktop/HTCS_Projects/GIT-PROJECT-TYLER";
         
         // Create a Blob instance
         Blob blob = new Blob();

@@ -1,7 +1,7 @@
 import java.io.*;
 public class Git {
     public static void main (String [] args) {
-        String repoPath = "/Users/User/Desktop/HTCS_Projects/";
+        String repoPath = "/Users/User/Desktop/HTCS_Projects/GIT-PROJECT-TYLER";
         Git git = new Git();
         git.initRepo(repoPath);
 
