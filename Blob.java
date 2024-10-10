@@ -217,31 +217,37 @@ public class Blob {
     public String createTree(File directory, String repoPath, String workingDir) throws IOException, NoSuchAlgorithmException {
         StringBuilder treeContent = new StringBuilder();
         File[] entries = directory.listFiles();
-        
+    
         if (entries != null) {
             // Sort entries for consistent tree hashing
             Arrays.sort(entries, Comparator.comparing(File::getName));
-            
+    
             for (File entry : entries) {
                 if (entry.getName().equals("git")) continue;
-                
-                String relativePath = getRelativePath(entry, workingDir);
+    
+                String relativePath = getRelativePath(entry, workingDir);  // Get full relative path
                 String hash;
-                
+    
                 if (entry.isDirectory()) {
+                    // Recursively create trees for subdirectories
                     hash = createTree(entry, repoPath, workingDir);
-                    treeContent.append("tree ").append(hash).append(" ").append(entry.getName()).append("\n");
+                    // Append to tree content with full relative path
+                    treeContent.append("tree ").append(hash).append(" ").append(relativePath).append("\n");
                     updateIndex("tree", hash, relativePath, repoPath);
                 } else {
+                    // Create blob for the file
                     createBlob(entry.getAbsolutePath(), repoPath);
                     hash = generateUniqueFileName(entry.getAbsolutePath());
-                    treeContent.append("blob ").append(hash).append(" ").append(entry.getName()).append("\n");
+                    // Append to tree content with full relative path
+                    treeContent.append("blob ").append(hash).append(" ").append(relativePath).append("\n");
                 }
             }
         }
-
+    
+        // Generate SHA-1 for the entire tree content
         String treeHash = generateUniqueFileName("tree_content:" + treeContent.toString());
-        
+    
+        // Save the tree object to the git/objects directory
         File objectsDir = new File(repoPath, "git/objects");
         File treeFile = new File(objectsDir, treeHash);
         if (!treeFile.exists()) {
@@ -250,7 +256,7 @@ public class Blob {
             Files.write(treeFile.toPath(), content);
             System.out.println("Tree created: " + treeHash);
         }
-        
+    
         return treeHash;
     }
 
