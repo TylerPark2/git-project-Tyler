@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
 public class Blob {
-    private static boolean COMPRESSION_ENABLED = true;
+    public static boolean COMPRESSION_ENABLED = true;
 
     static class IndexEntry {
         String type;  // either a "blob" or "tree"
