@@ -8,7 +8,6 @@ import java.util.zip.GZIPOutputStream;
 
 public class Blob {
     public static boolean COMPRESSION_ENABLED = true;
-
     static class IndexEntry {
         String type;  // either a "blob" or "tree"
         String hash;
@@ -28,7 +27,7 @@ public class Blob {
             this.path = path;
             this.deleted = deleted;
         }
-
+        
         @Override
         public String toString() {
             return String.format("%s %s %s%s", type, hash, path, deleted ? " deleted" : "");
