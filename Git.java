@@ -11,7 +11,6 @@ public class Git {
         File git = new File(path, "git");
         git.mkdirs();
         
-        // Check if repository already exists
         if (git.exists()) {
             File objectsDir = new File(git, "objects");
             File indexFile = new File(git, "index");
@@ -39,6 +38,3 @@ public class Git {
     }
     
 }
-
-
-        

@@ -51,6 +51,6 @@ public class CommitTester {
         } else {
             System.out.println("Commit file not found.");
         }
-        System.out.println("\n=======================================\n");
+        System.out.println("\n---------------------------------------\n");
     }
 }

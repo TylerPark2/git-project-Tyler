@@ -3,4 +3,5 @@ public interface GitInterface {
 
     String commit(String author, String message);
 
+    //not doing the extra credit
 }

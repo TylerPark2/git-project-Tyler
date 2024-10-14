@@ -30,11 +30,9 @@ public class BlobTest {
     }
     
     private static void setupTestFiles(String repoPath) throws IOException {
-        // Create directories
         Files.createDirectories(Paths.get(repoPath, "dir1"));
         Files.createDirectories(Paths.get(repoPath, "dir2"));
         Files.createDirectories(Paths.get(repoPath, "dir2/subdir"));
-        // Creating sample files
         Files.write(Paths.get(repoPath, "file1.txt"), "Content of file 1".getBytes());
         Files.write(Paths.get(repoPath, "dir1/file2.txt"), "Content of file 2".getBytes());
         Files.write(Paths.get(repoPath, "dir2/file3.txt"), "Content of file 3".getBytes());
